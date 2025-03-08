@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "code_agent"
+version = "0.1.0"
+description = "A multi-agent system that automates software development workflows"
+authors = [
+    {name = "AI Developer", email = "ai@example.com"}
+]
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.dependencies]
+smolagents = "*"
+pygithub = "*"
+pytest = "*"
+black = "*"
+python-dotenv = "*"
+tqdm = "*"
+
+[project.dev-dependencies]
+black = "*"
+pytest = "*"
+mypy = "*"
+flake8 = "*"
+
+[project.scripts]
+code-agent = "code_agent.cli:main"
