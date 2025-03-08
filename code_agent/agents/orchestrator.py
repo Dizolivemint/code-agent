@@ -5,7 +5,7 @@ import os
 import json
 
 from ..config import Config
-from ..tools.github_tools import GitHubTools
+from ..tools import github_tools
 from ..tools.filesystem_tools import FilesystemTools
 from ..tools.code_tools import CodeTools
 from ..tools.test_tools import TestTools
@@ -37,13 +37,14 @@ class AgentOrchestrator:
     
     def _init_tools(self):
         """Initialize all tool sets"""
-        # GitHub tools
+        #  GitHub tools - updated to use module functions
         if self.config.github.token and self.config.github.username:
-            self.tools["github"] = GitHubTools(
+            github_tools.initialize(
                 token=self.config.github.token,
                 username=self.config.github.username,
                 repository=self.config.github.repository
             )
+            self.tools["github"] = github_tools
         
         # Filesystem tools
         self.tools["filesystem"] = FilesystemTools(base_path=self.project_path)
@@ -55,100 +56,118 @@ class AgentOrchestrator:
         self.tools["test"] = TestTools(project_path=self.project_path)
     
     def _init_agents(self):
-        """Initialize specialized agents"""
-        # Create model instances for each agent
-        models = {}
-        for agent_name, agent_config in self.config.agents.items():
-            models[agent_name] = HfApiModel(
-                model_id=agent_config.model_id,
-                provider=agent_config.provider,
-                temperature=agent_config.temperature,
-                max_tokens=agent_config.max_tokens
-            )
-        
-        # Architect agent - responsible for system design and architecture
-        self.agents["architect"] = self._create_agent(
-            name="architect",
-            description="Designs the overall system architecture and component relationships",
-            model=models.get("architect"),
-            tools=[
-                self.tools["filesystem"].list_directory,
-                self.tools["filesystem"].read_file,
-                self.tools["filesystem"].write_file,
-                self.tools["filesystem"].create_directory,
-                self.tools["code"].analyze_code,
-                self.tools["code"].extract_imports
-            ],
-            imports=["os", "pathlib", "json"]
-        )
-        
-        # Developer agent - responsible for code implementation
-        self.agents["developer"] = self._create_agent(
-            name="developer",
-            description="Implements code based on requirements and architecture",
-            model=models.get("developer"),
-            tools=[
-                self.tools["filesystem"].list_directory,
-                self.tools["filesystem"].read_file,
-                self.tools["filesystem"].write_file,
-                self.tools["filesystem"].create_directory,
-                self.tools["code"].analyze_code,
-                self.tools["code"].format_code,
-                self.tools["code"].lint_code,
-                self.tools["code"].execute_code,
-                self.tools["github"].commit_changes if "github" in self.tools else None
-            ],
-            imports=["os", "pathlib", "json", "sys", "re"]
-        )
-        
-        # Tester agent - responsible for testing
-        self.agents["tester"] = self._create_agent(
-            name="tester",
-            description="Creates and runs tests to validate implemented code",
-            model=models.get("tester"),
-            tools=[
-                self.tools["filesystem"].list_directory,
-                self.tools["filesystem"].read_file,
-                self.tools["filesystem"].write_file,
-                self.tools["test"].generate_test,
-                self.tools["test"].run_tests,
-                self.tools["test"].run_coverage,
-                self.tools["test"].generate_test_suite
-            ],
-            imports=["os", "pathlib", "json", "pytest"]
-        )
-        
-        # Reviewer agent - responsible for code review and documentation
-        self.agents["reviewer"] = self._create_agent(
-            name="reviewer",
-            description="Reviews code quality and generates documentation",
-            model=models.get("reviewer"),
-            tools=[
-                self.tools["filesystem"].list_directory,
-                self.tools["filesystem"].read_file,
-                self.tools["filesystem"].write_file,
-                self.tools["code"].analyze_code,
-                self.tools["code"].lint_code,
-                self.tools["code"].extract_docstrings,
-                self.tools["github"].create_pull_request if "github" in self.tools else None
-            ],
-            imports=["os", "pathlib", "json"]
-        )
-        
-        # Manager agent - orchestrates all other agents
-        self.agents["manager"] = self._create_agent(
-            name="manager",
-            description="Manages and coordinates tasks between specialized agents",
-            model=models.get("architect"),  # Use architect's model for manager
-            tools=[],  # No direct tools, uses managed agents instead
-            imports=["os", "pathlib", "json", "sys"],
-            managed_agents=[
-                self.agents["architect"],
-                self.agents["developer"],
-                self.agents["tester"],
-                self.agents["reviewer"]
-            ]
-        )
+      """Initialize specialized agents"""
+      # Create model instances for each agent
+      models = {}
+      for agent_name, agent_config in self.config.agents.items():
+          models[agent_name] = HfApiModel(
+              model_id=agent_config.model_id,
+              provider=agent_config.provider,
+              temperature=agent_config.temperature,
+              max_tokens=agent_config.max_tokens
+          )
+      
+      # Architect agent - responsible for system design and architecture
+      self.agents["architect"] = self._create_agent(
+          name="architect",
+          description="Designs the overall system architecture and component relationships",
+          model=models.get("architect"),
+          tools=[
+              self.tools["filesystem"].list_directory,
+              self.tools["filesystem"].read_file,
+              self.tools["filesystem"].write_file,
+              self.tools["filesystem"].create_directory,
+              self.tools["code"].analyze_code,
+              self.tools["code"].extract_imports
+          ],
+          imports=["os", "pathlib", "json"]
+      )
+      
+      # Developer agent - responsible for code implementation
+      # Use GitHub tools if available
+      github_tool_functions = []
+      if "github" in self.tools:
+          github_tool_functions = [
+              self.tools["github"].create_issue,
+              self.tools["github"].create_branch,
+              self.tools["github"].commit_changes,
+              self.tools["github"].create_pull_request
+          ]
+      
+      self.agents["developer"] = self._create_agent(
+          name="developer",
+          description="Implements code based on requirements and architecture",
+          model=models.get("developer"),
+          tools=[
+              self.tools["filesystem"].list_directory,
+              self.tools["filesystem"].read_file,
+              self.tools["filesystem"].write_file,
+              self.tools["filesystem"].create_directory,
+              self.tools["code"].analyze_code,
+              self.tools["code"].format_code,
+              self.tools["code"].lint_code,
+              self.tools["code"].execute_code,
+              *github_tool_functions  # Unpack GitHub tool functions
+          ],
+          imports=["os", "pathlib", "json", "sys", "re"]
+      )
+      
+      # Tester agent - responsible for testing
+      self.agents["tester"] = self._create_agent(
+          name="tester",
+          description="Creates and runs tests to validate implemented code",
+          model=models.get("tester"),
+          tools=[
+              self.tools["filesystem"].list_directory,
+              self.tools["filesystem"].read_file,
+              self.tools["filesystem"].write_file,
+              self.tools["test"].generate_test,
+              self.tools["test"].run_tests,
+              self.tools["test"].run_coverage,
+              self.tools["test"].generate_test_suite
+          ],
+          imports=["os", "pathlib", "json", "pytest"]
+      )
+      
+      # Reviewer agent - responsible for code review and documentation
+      # Use GitHub tools if available
+      github_review_tools = []
+      if "github" in self.tools:
+          github_review_tools = [
+              self.tools["github"].get_content,
+              self.tools["github"].create_pull_request
+          ]
+      
+      self.agents["reviewer"] = self._create_agent(
+          name="reviewer",
+          description="Reviews code quality and generates documentation",
+          model=models.get("reviewer"),
+          tools=[
+              self.tools["filesystem"].list_directory,
+              self.tools["filesystem"].read_file,
+              self.tools["filesystem"].write_file,
+              self.tools["code"].analyze_code,
+              self.tools["code"].lint_code,
+              self.tools["code"].extract_docstrings,
+              *github_review_tools  # Unpack GitHub review tools
+          ],
+          imports=["os", "pathlib", "json"]
+      )
+      
+      # Manager agent - orchestrates all other agents
+      self.agents["manager"] = self._create_agent(
+          name="manager",
+          description="Manages and coordinates tasks between specialized agents",
+          model=models.get("architect"),  # Use architect's model for manager
+          tools=[],  # No direct tools, uses managed agents instead
+          imports=["os", "pathlib", "json", "sys"],
+          managed_agents=[
+              self.agents["architect"],
+              self.agents["developer"],
+              self.agents["tester"],
+              self.agents["reviewer"]
+          ]
+      )
     
     def _create_agent(
         self, 
