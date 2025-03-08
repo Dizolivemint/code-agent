@@ -16,20 +16,22 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
+dependencies = [
+    "smolagents",
+    "pygithub",
+    "pytest",
+    "black",
+    "python-dotenv",
+    "tqdm",
+]
 
-[project.dependencies]
-smolagents = "*"
-pygithub = "*"
-pytest = "*"
-black = "*"
-python-dotenv = "*"
-tqdm = "*"
-
-[project.dev-dependencies]
-black = "*"
-pytest = "*"
-mypy = "*"
-flake8 = "*"
+[project.optional-dependencies]
+dev = [
+    "black",
+    "pytest",
+    "mypy",
+    "flake8",
+]
 
 [project.scripts]
 code-agent = "code_agent.cli:main"
