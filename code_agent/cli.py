@@ -6,7 +6,6 @@ import textwrap
 import json
 from typing import List, Dict, Any, Optional
 from pathlib import Path
-import readline  # Add command history and editing
 
 from .config import Config
 from .agents.orchestrator import AgentOrchestrator

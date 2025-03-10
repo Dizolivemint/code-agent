@@ -296,7 +296,7 @@ result = github_tools.create_pull_request(
 Tools for working with the local filesystem.
 
 ```python
-from code_agent.tools.filesystem_tools import FilesystemTools
+from code_agent.tools import filesystem_tools
 
 # Create filesystem tools instance
 filesystem_tools = FilesystemTools(base_path="./project")
