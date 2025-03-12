@@ -29,6 +29,7 @@ from . import filesystem_tools
 from . import code_tools
 from . import test_tools
 from . import github_tools
+from . import development_manager
 
 # Define what's available when importing with *
 __all__ = [
@@ -37,6 +38,7 @@ __all__ = [
     'code_tools',
     'test_tools',
     'github_tools',
+    'development_manager',
     
     # Functions
     'set_base_path',

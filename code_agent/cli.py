@@ -1,19 +1,12 @@
-# code_agent/cli.py
+#!/usr/bin/env python3
 import argparse
 import os
-import sys
-import textwrap
+import logging
 import json
-from typing import List, Dict, Any, Optional
 from pathlib import Path
+from typing import Dict, Any, Optional
 
-from .config import Config
-from .agents.orchestrator import AgentOrchestrator
-from .utils.logger import logger
-
-def wrap_text(text: str, width: int = 80) -> str:
-    """Wrap text to specified width"""
-    return "\n".join(textwrap.wrap(text, width=width))
+from .tools.development_manager import DevelopmentManager
 
 def print_banner():
     """Print the application banner"""
@@ -27,51 +20,159 @@ def print_banner():
     ╰───────────────────────────────────────╯
     """
     print(banner)
+    
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler("code_agent_cli.log"),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger("code_agent_cli")
+
+def load_config(config_path: Optional[str] = None) -> Dict[str, Any]:
+    """
+    Load configuration from file
+    
+    Args:
+        config_path: Path to config file
+        
+    Returns:
+        Configuration dictionary
+    """
+    # Default config path
+    if not config_path:
+        config_path = os.path.join(str(Path.home()), ".code_agent", "config.json")
+    
+    # Default configuration
+    config = {
+        "github_token": os.environ.get("GITHUB_TOKEN", ""),
+        "github_username": os.environ.get("GITHUB_USERNAME", ""),
+        "model_id": os.environ.get("MODEL_ID", "meta-llama/Meta-Llama-3.1-70B-Instruct"),
+        "project_root": os.environ.get("PROJECT_ROOT", os.getcwd())
+    }
+    
+    # Load from file if it exists
+    if os.path.exists(config_path):
+        try:
+            with open(config_path, 'r') as f:
+                file_config = json.load(f)
+                config.update(file_config)
+        except Exception as e:
+            logger.error(f"Error loading config from {config_path}: {str(e)}")
+    
+    return config
+
+def save_config(config: Dict[str, Any], config_path: Optional[str] = None) -> None:
+    """
+    Save configuration to file
+    
+    Args:
+        config: Configuration dictionary
+        config_path: Path to config file
+    """
+    # Default config path
+    if not config_path:
+        config_path = os.path.join(str(Path.home()), ".code_agent", "config.json")
+    
+    # Create directory if it doesn't exist
+    os.makedirs(os.path.dirname(config_path), exist_ok=True)
+    
+    # Save config
+    try:
+        with open(config_path, 'w') as f:
+            json.dump(config, f, indent=2)
+        logger.info(f"Configuration saved to {config_path}")
+    except Exception as e:
+        logger.error(f"Error saving config to {config_path}: {str(e)}")
 
 def init_command(args):
-    """Initialize the Code Agent configuration"""
-    config = Config()
+    """Initialize Code Agent configuration"""
+    print_banner()
+    print("=== Code Agent Initialization ===")
+    
+    # Load existing config
+    config = load_config(args.config)
     
     # Get GitHub token
     if args.github_token:
         github_token = args.github_token
     else:
-        github_token = input("Enter your GitHub token (leave blank to skip): ").strip()
+        github_token = input(f"Enter your GitHub token (current: {config.get('github_token', '')[:4] + '...' if config.get('github_token') else 'None'}): ").strip()
+        if not github_token:
+            github_token = config.get("github_token", "")
     
     # Get GitHub username
     if args.github_username:
         github_username = args.github_username
     else:
-        github_username = input("Enter your GitHub username (leave blank to skip): ").strip()
+        github_username = input(f"Enter your GitHub username (current: {config.get('github_username', 'None')}): ").strip()
+        if not github_username:
+            github_username = config.get("github_username", "")
     
-    # Get GitHub repository
-    if args.github_repo:
-        github_repo = args.github_repo
+    # Get model ID
+    if args.model_id:
+        model_id = args.model_id
     else:
-        github_repo = input("Enter your GitHub repository name (leave blank to skip): ").strip()
+        model_id = input(f"Enter model ID (current: {config.get('model_id', 'meta-llama/Meta-Llama-3.1-70B-Instruct')}): ").strip()
+        if not model_id:
+            model_id = config.get("model_id", "meta-llama/Meta-Llama-3.1-70B-Instruct")
     
-    # Set GitHub config
-    if github_token:
-        config.github.token = github_token
-    if github_username:
-        config.github.username = github_username
-    if github_repo:
-        config.github.repository = github_repo
+    # Get project root
+    if args.project_root:
+        project_root = args.project_root
+    else:
+        project_root = input(f"Enter project root directory (current: {config.get('project_root', os.getcwd())}): ").strip()
+        if not project_root:
+            project_root = config.get("project_root", os.getcwd())
     
-    # Save configuration
-    config.save()
+    # Update config
+    config.update({
+        "github_token": github_token,
+        "github_username": github_username,
+        "model_id": model_id,
+        "project_root": project_root
+    })
+    
+    # Save config
+    save_config(config, args.config)
     
     print("\nConfiguration saved successfully!")
-    print("You can now use Code Agent to build projects.")
+    print(f"GitHub Token: {'✓ Set' if github_token else '✗ Not Set'}")
+    print(f"GitHub Username: {github_username if github_username else '✗ Not Set'}")
+    print(f"Model ID: {model_id}")
+    print(f"Project Root: {project_root}")
 
 def build_command(args):
     """Build a project from requirements"""
-    config = Config()
+    print_banner()
+    print("=== Code Agent Project Builder ===")
     
-    # Verify configuration
-    if not config.validate():
-        print("Error: Invalid configuration. Please run 'code-agent init' to set up your configuration.")
-        return
+    # Load config
+    config = load_config(args.config)
+    
+    # Check if GitHub token is set
+    if not config.get("github_token") and args.create_repo:
+        print("Warning: GitHub token not set. Repository creation disabled.")
+        args.create_repo = False
+    
+    # Get project name
+    project_name = args.name
+    if not project_name:
+        project_name = input("Enter project name: ").strip()
+        if not project_name:
+            print("Error: Project name is required.")
+            return
+    
+    # Get project description
+    project_description = args.description
+    if not project_description:
+        project_description = input("Enter project description: ").strip()
+        if not project_description:
+            print("Error: Project description is required.")
+            return
     
     # Get requirements
     requirements = ""
@@ -83,9 +184,16 @@ def build_command(args):
             print(f"Error reading requirements file: {str(e)}")
             return
     else:
-        print("Enter project requirements (press Ctrl+D on a new line when done):")
+        print("Enter project requirements (finish with Ctrl+D on Unix or Ctrl+Z on Windows):")
         try:
-            requirements = sys.stdin.read().strip()
+            requirements_lines = []
+            while True:
+                try:
+                    line = input()
+                    requirements_lines.append(line)
+                except EOFError:
+                    break
+            requirements = "\n".join(requirements_lines)
         except KeyboardInterrupt:
             print("\nOperation cancelled.")
             return
@@ -94,183 +202,60 @@ def build_command(args):
         print("Error: No requirements provided.")
         return
     
-    # Get project name
-    project_name = args.project_name
-    if not project_name:
-        project_name = input("Enter project name: ").strip()
-        if not project_name:
-            print("Error: Project name is required.")
-            return
+    # Create development manager
+    manager = DevelopmentManager(config)
     
-    # Get project path
-    project_path = args.output_dir
-    if not project_path:
-        project_path = input(f"Enter project directory path (default: ./{project_name}): ").strip()
-        if not project_path:
-            project_path = f"./{project_name}"
-    
-    # Create project directory if it doesn't exist
-    os.makedirs(project_path, exist_ok=True)
-    
-    # Set up project configuration
-    config.set_project(project_name, requirements, project_path)
-    
-    # Initialize orchestrator
-    orchestrator = AgentOrchestrator(config, project_path)
-    
+    # Build project
     print(f"\nBuilding project '{project_name}'...")
     print("This may take some time. Please be patient.")
     
-    # Build the application
-    result = orchestrator.build_application(requirements, project_name)
+    result = manager.build_project(
+        name=project_name,
+        description=project_description,
+        requirements=requirements,
+        create_repo=args.create_repo
+    )
     
     print("\nProject build completed!")
-    print(f"Project is available at: {os.path.abspath(project_path)}")
-
-def chat_command(args):
-    """Start a chat session with the Code Agent"""
-    config = Config()
+    print(f"Project directory: {result['project']['project_dir']}")
     
-    # Verify configuration
-    if not config.validate():
-        print("Error: Invalid configuration. Please run 'code-agent init' to set up your configuration.")
-        return
+    if args.create_repo and result['project'].get('repository_url'):
+        print(f"GitHub repository: {result['project']['repository_url']}")
     
-    # Get project path
-    project_path = args.project_dir
-    if not project_path:
-        if config.project and config.project.root_dir:
-            project_path = str(config.project.root_dir)
-        else:
-            project_path = input("Enter project directory path (default: current directory): ").strip()
-            if not project_path:
-                project_path = os.getcwd()
-    
-    if not os.path.exists(project_path):
-        print(f"Error: Project directory '{project_path}' does not exist.")
-        return
-    
-    # Set project path as current directory
-    os.chdir(project_path)
-    
-    # Initialize orchestrator
-    orchestrator = AgentOrchestrator(config, project_path)
-    
-    print_banner()
-    print("\nWelcome to Code Agent Chat!")
-    print("You can ask the agent to perform development tasks.")
-    print("Type 'exit' or 'quit' to end the session.")
-    print("Type 'help' to see available commands.")
-    print(f"Working directory: {os.path.abspath(project_path)}")
-    
-    # Chat loop
-    while True:
-        try:
-            user_input = input("\n> ").strip()
-            
-            if user_input.lower() in ['exit', 'quit']:
-                print("Goodbye!")
-                break
-            
-            if user_input.lower() == 'help':
-                print("\nAvailable commands:")
-                print("  help           - Show this help message")
-                print("  exit, quit     - Exit the chat session")
-                print("  analyze        - Analyze project requirements")
-                print("  implement      - Implement a feature")
-                print("  test           - Create and run tests")
-                print("  review         - Review code")
-                print("\nYou can also type any natural language request.")
-                continue
-            
-            if user_input.lower() == 'analyze':
-                requirements = input("Enter project requirements: ").strip()
-                if requirements:
-                    print("\nAnalyzing requirements...")
-                    result = orchestrator.analyze_requirements(requirements)
-                    print(f"\nAnalysis result:\n{result}")
-                continue
-            
-            if user_input.lower() == 'implement':
-                feature_name = input("Enter feature name: ").strip()
-                feature_description = input("Enter feature description: ").strip()
-                if feature_name and feature_description:
-                    print(f"\nImplementing feature '{feature_name}'...")
-                    result = orchestrator.implement_feature(
-                        feature_name, 
-                        feature_description, 
-                        "Use the filesystem tools to explore the project structure."
-                    )
-                    print(f"\nImplementation result:\n{result}")
-                continue
-            
-            if user_input.lower() == 'test':
-                feature_name = input("Enter feature name to test: ").strip()
-                if feature_name:
-                    print(f"\nCreating tests for feature '{feature_name}'...")
-                    result = orchestrator.create_tests(
-                        feature_name,
-                        "Use the filesystem tools to explore the project structure and implementation."
-                    )
-                    print(f"\nTest result:\n{result}")
-                continue
-            
-            if user_input.lower() == 'review':
-                feature_name = input("Enter feature name to review: ").strip()
-                if feature_name:
-                    print(f"\nReviewing feature '{feature_name}'...")
-                    result = orchestrator.review_code(
-                        feature_name,
-                        "Use the filesystem tools to explore the project structure and implementation.",
-                        "Use the test tools to analyze test coverage."
-                    )
-                    print(f"\nReview result:\n{result}")
-                continue
-            
-            # Process general request with the manager agent
-            if user_input:
-                print("\nProcessing your request...")
-                result = orchestrator.agents["manager"].run(user_input)
-                print(f"\nResult:\n{result}")
-            
-        except KeyboardInterrupt:
-            print("\nOperation cancelled.")
-            continue
-        except EOFError:
-            print("\nGoodbye!")
-            break
-        except Exception as e:
-            print(f"\nError: {str(e)}")
-            logger.error(f"Error in chat command: {str(e)}", exc_info=True)
+    print(f"\nImplemented {len(result['feature_results'])} features:")
+    for feature_result in result['feature_results']:
+        feature = feature_result['feature']
+        print(f"- {feature['name']}: {feature['description']}")
 
 def feature_command(args):
     """Implement a specific feature"""
-    config = Config()
+    print_banner()
+    print("=== Code Agent Feature Implementation ===")
     
-    # Verify configuration
-    if not config.validate():
-        print("Error: Invalid configuration. Please run 'code-agent init' to set up your configuration.")
-        return
+    # Load config
+    config = load_config(args.config)
     
-    # Get project path
-    project_path = args.project_dir
-    if not project_path:
-        if config.project and config.project.root_dir:
-            project_path = str(config.project.root_dir)
-        else:
-            print("Error: Project directory not specified.")
+    # Get project directory
+    project_dir = args.project_dir
+    if not project_dir:
+        project_dir = input("Enter project directory: ").strip()
+        if not project_dir:
+            print("Error: Project directory is required.")
             return
     
-    if not os.path.exists(project_path):
-        print(f"Error: Project directory '{project_path}' does not exist.")
+    if not os.path.exists(project_dir):
+        print(f"Error: Project directory '{project_dir}' does not exist.")
         return
     
-    # Get feature details
+    # Get feature name
     feature_name = args.name
     if not feature_name:
-        print("Error: Feature name is required.")
-        return
+        feature_name = input("Enter feature name: ").strip()
+        if not feature_name:
+            print("Error: Feature name is required.")
+            return
     
+    # Get feature description
     feature_description = args.description
     if not feature_description:
         feature_description = input("Enter feature description: ").strip()
@@ -278,58 +263,53 @@ def feature_command(args):
             print("Error: Feature description is required.")
             return
     
-    # Initialize orchestrator
-    orchestrator = AgentOrchestrator(config, project_path)
+    # Create development manager
+    manager = DevelopmentManager(config)
     
+    # Implement feature
     print(f"\nImplementing feature '{feature_name}'...")
     print("This may take some time. Please be patient.")
     
-    # Implement the feature
-    result = orchestrator.implement_feature(
-        feature_name, 
-        feature_description, 
-        "Use the filesystem tools to explore the project structure."
+    result = manager.implement_feature(
+        project_dir=project_dir,
+        feature={"name": feature_name, "description": feature_description}
     )
     
     print("\nFeature implementation completed!")
-    if args.test:
-        print("\nCreating and running tests...")
-        test_result = orchestrator.create_tests(feature_name, str(result))
-        print("\nTests completed!")
+    
+    if "implementation" in result and "tests" in result:
+        print("\nImplementation Summary:")
+        print(result["implementation"].get("summary", "Feature implemented successfully."))
         
-        if args.review:
-            print("\nReviewing implementation...")
-            review_result = orchestrator.review_code(feature_name, str(result), str(test_result))
-            print("\nReview completed!")
+        print("\nTest Summary:")
+        print(result["tests"].get("summary", "Tests created and executed."))
 
 def main():
     """Main entry point for the CLI"""
-    parser = argparse.ArgumentParser(description="Code Agent - AI-Powered Development Team")
+    parser = argparse.ArgumentParser(description="Code Agent - Build complete applications with AI")
+    parser.add_argument("--config", help="Path to config file")
+    
     subparsers = parser.add_subparsers(dest="command", help="Command to run")
     
     # Init command
     init_parser = subparsers.add_parser("init", help="Initialize Code Agent configuration")
     init_parser.add_argument("--github-token", help="GitHub API token")
     init_parser.add_argument("--github-username", help="GitHub username")
-    init_parser.add_argument("--github-repo", help="GitHub repository name")
+    init_parser.add_argument("--model-id", help="Model ID for the agent")
+    init_parser.add_argument("--project-root", help="Root directory for project files")
     
     # Build command
     build_parser = subparsers.add_parser("build", help="Build a project from requirements")
+    build_parser.add_argument("--name", help="Project name")
+    build_parser.add_argument("--description", help="Project description")
     build_parser.add_argument("--requirements-file", help="Path to requirements file")
-    build_parser.add_argument("--project-name", help="Project name")
-    build_parser.add_argument("--output-dir", help="Output directory for the project")
-    
-    # Chat command
-    chat_parser = subparsers.add_parser("chat", help="Start a chat session with Code Agent")
-    chat_parser.add_argument("--project-dir", help="Project directory path")
+    build_parser.add_argument("--create-repo", action="store_true", help="Create GitHub repository")
     
     # Feature command
     feature_parser = subparsers.add_parser("feature", help="Implement a specific feature")
     feature_parser.add_argument("--name", help="Feature name")
     feature_parser.add_argument("--description", help="Feature description")
-    feature_parser.add_argument("--project-dir", help="Project directory path")
-    feature_parser.add_argument("--test", action="store_true", help="Create and run tests after implementation")
-    feature_parser.add_argument("--review", action="store_true", help="Review code after implementation")
+    feature_parser.add_argument("--project-dir", help="Project directory")
     
     args = parser.parse_args()
     
@@ -337,8 +317,6 @@ def main():
         init_command(args)
     elif args.command == "build":
         build_command(args)
-    elif args.command == "chat":
-        chat_command(args)
     elif args.command == "feature":
         feature_command(args)
     else:
@@ -346,201 +324,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-# code_agent/main.py
-import os
-import sys
-from pathlib import Path
-from typing import Dict, Any, Optional
-
-from .config import Config
-from .agents.orchestrator import AgentOrchestrator
-from .utils.logger import logger
-
-class CodeAgentApp:
-    """Main Code Agent application class"""
-    
-    def __init__(self, config_path: Optional[str] = None):
-        """
-        Initialize the Code Agent application
-        
-        Args:
-            config_path: Path to configuration file (optional)
-        """
-        self.config = Config(config_path)
-        self.orchestrator = None
-    
-    def initialize(self, 
-                  github_token: Optional[str] = None, 
-                  github_username: Optional[str] = None,
-                  github_repository: Optional[str] = None) -> None:
-        """
-        Initialize the application configuration
-        
-        Args:
-            github_token: GitHub API token (optional)
-            github_username: GitHub username (optional)
-            github_repository: GitHub repository name (optional)
-        """
-        # Update GitHub configuration if provided
-        if github_token:
-            self.config.github.token = github_token
-        if github_username:
-            self.config.github.username = github_username
-        if github_repository:
-            self.config.github.repository = github_repository
-        
-        # Save configuration
-        self.config.save()
-        
-        logger.info("Application initialized successfully")
-    
-    def set_project(self, name: str, description: str, root_dir: str) -> None:
-        """
-        Set the current project
-        
-        Args:
-            name: Project name
-            description: Project description
-            root_dir: Project root directory
-        """
-        self.config.set_project(name, description, root_dir)
-        
-        # Initialize orchestrator if not already initialized
-        if self.orchestrator is None:
-            self.orchestrator = AgentOrchestrator(self.config, root_dir)
-        else:
-            # Update project path in orchestrator
-            self.orchestrator.set_project_path(root_dir)
-        
-        logger.info(f"Project set to '{name}' at '{root_dir}'")
-    
-    def build_project(self, requirements: str, project_name: str, output_dir: Optional[str] = None) -> Dict[str, Any]:
-        """
-        Build a project from requirements
-        
-        Args:
-            requirements: Project requirements text
-            project_name: Project name
-            output_dir: Output directory (optional)
-            
-        Returns:
-            Build results
-        """
-        # Use provided output directory or create one based on project name
-        if not output_dir:
-            output_dir = os.path.join(os.getcwd(), project_name)
-        
-        # Create output directory if it doesn't exist
-        os.makedirs(output_dir, exist_ok=True)
-        
-        # Set project
-        self.set_project(project_name, requirements, output_dir)
-        
-        # Build the application
-        result = self.orchestrator.build_application(requirements, project_name)
-        
-        logger.info(f"Project '{project_name}' built successfully at '{output_dir}'")
-        
-        return result
-    
-    def implement_feature(self, feature_name: str, feature_description: str) -> Dict[str, Any]:
-        """
-        Implement a specific feature
-        
-        Args:
-            feature_name: Feature name
-            feature_description: Feature description
-            
-        Returns:
-            Implementation results
-        """
-        if not self.orchestrator:
-            raise ValueError("Project not set. Call set_project first.")
-        
-        # Implement the feature
-        result = self.orchestrator.implement_feature(
-            feature_name, 
-            feature_description, 
-            "Use the filesystem tools to explore the project structure."
-        )
-        
-        logger.info(f"Feature '{feature_name}' implemented successfully")
-        
-        return result
-    
-    def create_tests(self, feature_name: str, implementation_info: str) -> Dict[str, Any]:
-        """
-        Create tests for an implemented feature
-        
-        Args:
-            feature_name: Feature name
-            implementation_info: Information about the feature implementation
-            
-        Returns:
-            Testing results
-        """
-        if not self.orchestrator:
-            raise ValueError("Project not set. Call set_project first.")
-        
-        # Create tests
-        result = self.orchestrator.create_tests(feature_name, implementation_info)
-        
-        logger.info(f"Tests created for feature '{feature_name}'")
-        
-        return result
-    
-    def review_code(self, feature_name: str, implementation_info: str, test_results: str) -> Dict[str, Any]:
-        """
-        Review code for an implemented feature
-        
-        Args:
-            feature_name: Feature name
-            implementation_info: Information about the feature implementation
-            test_results: Results from testing the feature
-            
-        Returns:
-            Review results
-        """
-        if not self.orchestrator:
-            raise ValueError("Project not set. Call set_project first.")
-        
-        # Review code
-        result = self.orchestrator.review_code(feature_name, implementation_info, test_results)
-        
-        logger.info(f"Code review completed for feature '{feature_name}'")
-        
-        return result
-    
-    def process_request(self, request: str) -> Dict[str, Any]:
-        """
-        Process a general request using the manager agent
-        
-        Args:
-            request: User request text
-            
-        Returns:
-            Processing results
-        """
-        if not self.orchestrator:
-            raise ValueError("Project not set. Call set_project first.")
-        
-        # Process the request with the manager agent
-        result = self.orchestrator.agents["manager"].run(request)
-        
-        logger.info("Request processed successfully")
-        
-        return result
-
-# Function to simplify imports for users
-def create_app(config_path: Optional[str] = None) -> CodeAgentApp:
-    """
-    Create and return a CodeAgentApp instance
-    
-    Args:
-        config_path: Path to configuration file (optional)
-        
-    Returns:
-        CodeAgentApp instance
-    """
-    return CodeAgentApp(config_path) 
