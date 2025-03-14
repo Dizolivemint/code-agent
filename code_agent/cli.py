@@ -213,7 +213,8 @@ def build_command(args):
         name=project_name,
         description=project_description,
         requirements=requirements,
-        create_repo=args.create_repo
+        create_repo=args.create_repo,
+        parent_dir=projects_dir
     )
     
     print("\nProject build completed!")
@@ -238,14 +239,35 @@ def feature_command(args):
     # Get project directory
     project_dir = args.project_dir
     if not project_dir:
-        project_dir = input("Enter project directory: ").strip()
-        if not project_dir:
-            print("Error: Project directory is required.")
-            return
+        # List available projects in the projects directory
+        projects_path = os.path.join(os.getcwd(), "projects")
+        if os.path.exists(projects_path):
+            projects = os.listdir(projects_path)
+            if projects:
+                print("Available projects:")
+                for idx, project in enumerate(projects, 1):
+                    print(f"{idx}. {project}")
+                choice = input("Enter project number or name (or enter a new project name): ").strip()
+                
+                # Handle numeric choice
+                if choice.isdigit() and 1 <= int(choice) <= len(projects):
+                    project_dir = os.path.join(projects_path, projects[int(choice)-1])
+                else:
+                    # Handle project name choice or new project
+                    project_name = choice
+                    project_dir = os.path.join(projects_path, project_name.replace(" ", "_").lower())
+            else:
+                project_name = input("No existing projects. Enter a new project name: ").strip()
+                project_dir = os.path.join(projects_path, project_name.replace(" ", "_").lower())
+        else:
+            os.makedirs(projects_path, exist_ok=True)
+            project_name = input("Enter project name: ").strip()
+            project_dir = os.path.join(projects_path, project_name.replace(" ", "_").lower())
     
+    # Create project directory if it doesn't exist
     if not os.path.exists(project_dir):
-        print(f"Error: Project directory '{project_dir}' does not exist.")
-        return
+        os.makedirs(project_dir, exist_ok=True)
+        print(f"Created new project directory: {project_dir}")
     
     # Get feature name
     feature_name = args.name

@@ -1,4 +1,5 @@
 # orchestrator.py
+import os
 from smolagents import CodeAgent, HfApiModel
 from typing import List, Dict, Any, Optional, Union
 
@@ -182,6 +183,11 @@ class AgentOrchestrator:
         Args:
             path: New project path
         """
+        # Ensure the path is either absolute or relative to the projects directory
+        if not os.path.isabs(path):
+            projects_dir = os.path.join(os.getcwd(), "projects")
+            path = os.path.join(projects_dir, path)
+        
         self.project_path = path
         
         # Update project path in tools

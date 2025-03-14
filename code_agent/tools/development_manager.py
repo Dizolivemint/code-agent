@@ -179,8 +179,12 @@ class DevelopmentManager:
         """
         logger.info(f"Creating project: {name}")
         
-        # Create project directory
-        project_dir = os.path.join(self.project_root, name.replace(" ", "_").lower())
+        # Create projects directory if it doesn't exist
+        projects_dir = os.path.join(os.getcwd(), "projects")
+        os.makedirs(projects_dir, exist_ok=True)
+        
+        # Create project directory within projects directory
+        project_dir = os.path.join(projects_dir, name.replace(" ", "_").lower())
         os.makedirs(project_dir, exist_ok=True)
         
         # Create GitHub repository if requested
