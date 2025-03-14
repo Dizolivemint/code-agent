@@ -42,9 +42,11 @@ class DevelopmentManager:
         self.model_id = config.get("model_id", "meta-llama/Meta-Llama-3.1-70B-Instruct")
         
         # Initialize the model
-        self.model = HfApiModel(
+        from code_agent.models import ModelManager
+        model_manager = ModelManager()
+        self.model = model_manager.get_model(
             model_id=self.model_id,
-            temperature=0.2,  # Lower temperature for more deterministic outputs
+            temperature=0.2, # Lower the temperature for more deterministic outputs
             max_tokens=4000
         )
         

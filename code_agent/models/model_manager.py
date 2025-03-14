@@ -5,6 +5,7 @@ Model manager for the Code Agent application.
 from typing import Dict, Any, Optional
 from smolagents import HfApiModel
 import os
+from pathlib import Path
 import dotenv
 
 class ModelManager:
@@ -49,7 +50,8 @@ class ModelManager:
             model_id=model_id,
             provider=provider,
             temperature=temperature,
-            max_tokens=max_tokens
+            max_tokens=max_tokens,
+            token=self.hf_token
         )
         
         # Cache the model instance

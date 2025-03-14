@@ -47,9 +47,13 @@ class AgentOrchestrator:
     def _init_agents(self):
         """Initialize specialized agents"""
         # Create model instances for each agent
+        from ..models import ModelManager
+        model_manager = ModelManager()
+        
+        # Create model instances for each agent using the model manager
         models = {}
         for agent_name, agent_config in self.config.agents.items():
-            models[agent_name] = HfApiModel(
+            models[agent_name] = model_manager.get_model(
                 model_id=agent_config.model_id,
                 provider=agent_config.provider,
                 temperature=agent_config.temperature,
