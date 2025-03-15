@@ -19,11 +19,15 @@ class CodeAgentApp:
         """
         self.config = Config(config_path)
         self.orchestrator = None
+        
+        # Validate configuration during initialization
+        if not self.config.validate():
+            logger.warning("Configuration is incomplete. Please run initialization.")
     
     def initialize(self, 
                   github_token: Optional[str] = None, 
                   github_username: Optional[str] = None,
-                  github_repository: Optional[str] = None) -> None:
+                  github_repository: Optional[str] = None) -> bool:
         """
         Initialize the application configuration
         
@@ -31,6 +35,9 @@ class CodeAgentApp:
             github_token: GitHub API token (optional)
             github_username: GitHub username (optional)
             github_repository: GitHub repository name (optional)
+            
+        Returns:
+            True if initialization was successful, False otherwise
         """
         # Update GitHub configuration if provided
         if github_token:
@@ -43,7 +50,13 @@ class CodeAgentApp:
         # Save configuration
         self.config.save()
         
+        # Validate configuration after updates
+        if not self.config.validate():
+            logger.error("Configuration is still incomplete after initialization.")
+            return False
+            
         logger.info("Application initialized successfully")
+        return True
     
     def set_project(self, name: str, description: str, root_dir: str) -> None:
         """
@@ -54,6 +67,18 @@ class CodeAgentApp:
             description: Project description
             root_dir: Project root directory
         """
+        # Validate project directory
+        if not os.path.exists(root_dir):
+            error_msg = f"Project directory does not exist: {root_dir}"
+            logger.error(error_msg)
+            raise ValueError(error_msg)
+            
+        # Check if we have write permissions
+        if not os.access(root_dir, os.W_OK):
+            error_msg = f"No write permission for project directory: {root_dir}"
+            logger.error(error_msg)
+            raise PermissionError(error_msg)
+        
         self.config.set_project(name, description, root_dir)
         
         # Initialize orchestrator if not already initialized
@@ -64,6 +89,16 @@ class CodeAgentApp:
             self.orchestrator.set_project_path(root_dir)
         
         logger.info(f"Project set to '{name}' at '{root_dir}'")
+    
+    def _ensure_project_set(self) -> None:
+        """
+        Ensure that a project is set before performing operations
+        
+        Raises:
+            ValueError: If no project is set
+        """
+        if not self.orchestrator:
+            raise ValueError("Project not set. Call set_project first.")
     
     def build_project(self, requirements: str, project_name: str, output_dir: Optional[str] = None) -> Dict[str, Any]:
         """
@@ -105,8 +140,8 @@ class CodeAgentApp:
         Returns:
             Implementation results
         """
-        if not self.orchestrator:
-            raise ValueError("Project not set. Call set_project first.")
+        # Ensure project is set
+        self._ensure_project_set()
         
         # Implement the feature
         result = self.orchestrator.implement_feature(
@@ -130,8 +165,8 @@ class CodeAgentApp:
         Returns:
             Testing results
         """
-        if not self.orchestrator:
-            raise ValueError("Project not set. Call set_project first.")
+        # Ensure project is set
+        self._ensure_project_set()
         
         # Create tests
         result = self.orchestrator.create_tests(feature_name, implementation_info)
@@ -152,8 +187,8 @@ class CodeAgentApp:
         Returns:
             Review results
         """
-        if not self.orchestrator:
-            raise ValueError("Project not set. Call set_project first.")
+        # Ensure project is set
+        self._ensure_project_set()
         
         # Review code
         result = self.orchestrator.review_code(feature_name, implementation_info, test_results)
@@ -172,8 +207,8 @@ class CodeAgentApp:
         Returns:
             Processing results
         """
-        if not self.orchestrator:
-            raise ValueError("Project not set. Call set_project first.")
+        # Ensure project is set
+        self._ensure_project_set()
         
         # Process the request with the manager agent
         result = self.orchestrator.agents["manager"].run(request)
@@ -181,6 +216,61 @@ class CodeAgentApp:
         logger.info("Request processed successfully")
         
         return result
+    
+    def run_tests(self) -> Dict[str, Any]:
+        """
+        Run all tests in the project
+        
+        Returns:
+            Test results
+        """
+        # Ensure project is set
+        self._ensure_project_set()
+        
+        # Run tests
+        result = self.orchestrator.run_all_tests()
+        
+        logger.info("All tests completed")
+        
+        return result
+    
+    def validate_environment(self) -> Dict[str, Any]:
+        """
+        Validate the environment for all required dependencies
+        
+        Returns:
+            Validation results
+        """
+        results = {
+            "config_valid": self.config.validate(),
+            "github_configured": bool(self.config.github.token and self.config.github.username),
+            "project_set": self.config.project is not None,
+            "dependencies_installed": self._check_dependencies()
+        }
+        
+        return results
+    
+    def _check_dependencies(self) -> bool:
+        """
+        Check if all required Python packages are installed
+        
+        Returns:
+            True if all dependencies are installed, False otherwise
+        """
+        required_packages = [
+            "smolagents",
+            "pygithub",
+            "pytest",
+            "python-dotenv"
+        ]
+        
+        try:
+            import pkg_resources
+            pkg_resources.require(required_packages)
+            return True
+        except (pkg_resources.DistributionNotFound, pkg_resources.VersionConflict):
+            return False
+
 
 # Function to simplify imports for users
 def create_app(config_path: Optional[str] = None) -> CodeAgentApp:
@@ -193,4 +283,4 @@ def create_app(config_path: Optional[str] = None) -> CodeAgentApp:
     Returns:
         CodeAgentApp instance
     """
-    return CodeAgentApp(config_path) 
+    return CodeAgentApp(config_path)
