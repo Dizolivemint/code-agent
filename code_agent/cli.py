@@ -158,6 +158,11 @@ def build_command(args):
         print("Warning: GitHub token not set. Repository creation disabled.")
         args.create_repo = False
     
+    projects_dir = os.path.join(os.getcwd(), "projects")
+    if not os.path.exists(projects_dir):
+        os.makedirs(projects_dir, exist_ok=True)
+        print(f"Created projects directory: {projects_dir}")
+    
     # Get project name
     project_name = args.name
     if not project_name:
@@ -213,8 +218,7 @@ def build_command(args):
         name=project_name,
         description=project_description,
         requirements=requirements,
-        create_repo=args.create_repo,
-        parent_dir=projects_dir
+        create_repo=args.create_repo
     )
     
     print("\nProject build completed!")
