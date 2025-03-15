@@ -212,29 +212,37 @@ class DevelopmentManager:
             f.write(requirements)
         
         # Generate project architecture using the architect agent
-        architecture_result = self.architect_agent.run(
-            f"""
-            You are a senior software architect. You need to design a project architecture based on these requirements:
-            
-            PROJECT NAME: {name}
-            DESCRIPTION: {description}
-            
-            REQUIREMENTS:
-            {requirements}
-            
-            Follow these steps:
-            
-            1. Analyze the requirements and break them down into core features
-            2. Define the main components and their responsibilities
-            3. Create a directory structure that follows Python best practices
-            4. Create essential files like README.md, setup.py, etc.
-            5. Define the data models needed
-            6. Outline the API endpoints (if applicable)
-            
-            Create the directory structure and essential files using the filesystem tools.
-            Return a detailed architecture document that explains your design decisions.
-            """
-        )
+        try:
+          architecture_result = self.architect_agent.run(
+              f"""
+              You are a senior software architect. You need to design a project architecture based on these requirements:
+              
+              PROJECT NAME: {name}
+              DESCRIPTION: {description}
+              
+              REQUIREMENTS:
+              {requirements}
+              
+              Follow these steps:
+              
+              1. Analyze the requirements and break them down into core features
+              2. Define the main components and their responsibilities
+              3. Create a directory structure that follows Python best practices
+              4. Create essential files like README.md, setup.py, etc.
+              5. Define the data models needed
+              6. Outline the API endpoints (if applicable)
+              
+              Create the directory structure and essential files using the filesystem tools.
+              Return a detailed architecture document that explains your design decisions.
+              """
+          )
+        except Exception as e:
+            logger.error(f"Failed to generate architecture: {str(e)}")
+            return {
+              "status": "error",
+              "message": f"Failed to generate project architecture: {str(e)}",
+              "project_dir": project_dir
+            }
         
         # Extract features from the architecture result
         features = self._extract_features_from_results(architecture_result)
