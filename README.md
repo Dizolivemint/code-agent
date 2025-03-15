@@ -92,7 +92,7 @@ export PROJECT_ROOT=/path/to/projects
 To build a complete project from requirements:
 
 ```bash
-code-agent build --name "TaskManager" --description "A task management system" --requirements-file requirements.txt --create-repo
+code-agent build --name "TaskManager" --description "A task management system" --requirements-file task_app_requirements.txt --create-repo
 ```
 
 If you don't provide the arguments, the command will prompt you for them.
