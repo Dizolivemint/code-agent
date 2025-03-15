@@ -21,6 +21,47 @@ cd code-agent
 pip install -e .
 ```
 
+## Environment Setup and Validation
+
+Before using Code Agent, ensure your environment is properly configured:
+
+### Required Environment Variables
+
+Set the following in your `.env` file or environment:
+
+```
+GITHUB_TOKEN=your_github_token_here
+GITHUB_USERNAME=your_github_username_here
+```
+
+Optional but recommended:
+```
+HF_TOKEN=your_huggingface_token_here
+```
+
+### Required Dependencies
+
+Install all dependencies with:
+
+```bash
+pip install -r requirements.txt
+```
+
+### Validating Your Environment
+
+Run the environment validator to check if all prerequisites are met:
+
+```bash
+python -m code_agent.validate
+```
+
+This checks that:
+- GitHub credentials are properly configured
+- Required packages are installed
+- Configuration is valid
+
+If any issues are found, the validator will provide clear instructions to fix them.
+
 ## Configuration
 
 Run the initialization command to set up your configuration:
@@ -63,7 +104,7 @@ Requirements can be provided via a file or entered interactively when prompted.
 To implement a specific feature in an existing project:
 
 ```bash
-code-agent feature --name "User Authentication" --description "Implement user registration, login, and logout" --project-dir ./my_project
+code-agent feature --name "User Authentication" --description "Implement user registration, login, and logout" --project-dir my_project
 ```
 
 This will:
@@ -71,6 +112,15 @@ This will:
 2. Implement the feature code
 3. Write tests for the feature
 4. Commit the changes and create a pull request (if GitHub integration is set up)
+
+When specifying a project directory, Code Agent supports:
+```bash
+# Using a project name in the 'projects' directory
+code-agent feature --name "User Authentication" --description "Implement user auth" --project-dir my_project
+
+# Using a relative or absolute path
+code-agent feature --name "User Authentication" --description "Implement user auth" --project-dir ./custom/my_project
+```
 
 ## Architecture
 

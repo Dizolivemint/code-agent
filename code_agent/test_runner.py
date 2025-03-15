@@ -146,6 +146,7 @@ def main():
     parser = argparse.ArgumentParser(description="Run unit tests for Code Agent with environment validation")
     parser.add_argument("--pattern", "-p", help="Pattern to match test files (e.g. 'config' for test_config.py)")
     parser.add_argument("--skip-validation", "-s", action="store_true", help="Skip environment validation")
+    parser.add_argument("--skip-tests", "-v", action="store_true", help="Only validate environment, don't run tests")
     
     args = parser.parse_args()
     
