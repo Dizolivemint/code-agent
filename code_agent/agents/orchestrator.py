@@ -24,7 +24,33 @@ class AgentOrchestrator:
             logger.warning("Invalid configuration. GitHub integration may not work properly.")
             
         self.config = config
-        self.project_path = project_path if project_path else os.getcwd()
+        
+        # Create projects directory
+        projects_dir = os.path.join(os.getcwd(), "projects")
+        os.makedirs(projects_dir, exist_ok=True)
+        
+        # If project_path is provided, ensure it's inside the projects directory
+        if project_path:
+            # Check if it's already an absolute path
+            if os.path.isabs(project_path):
+                # Is this path already inside the projects directory?
+                if not project_path.startswith(projects_dir):
+                    # If not, take just the basename and put it in projects directory
+                    project_name = os.path.basename(project_path)
+                    self.project_path = os.path.join(projects_dir, project_name)
+                else:
+                    # Already in projects directory
+                    self.project_path = project_path
+            else:
+                # It's a relative path, so join it with projects directory
+                self.project_path = os.path.join(projects_dir, project_path)
+        else:
+            # No project path provided, use projects directory itself
+            self.project_path = projects_dir
+        
+        # Ensure the project path exists
+        os.makedirs(self.project_path, exist_ok=True)
+        
         self.agents = {}
         self.tools_status = {
             "filesystem": False,
