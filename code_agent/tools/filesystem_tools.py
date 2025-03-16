@@ -76,8 +76,10 @@ def read_file(path: str) -> Dict[str, Any]:
     full_path = _resolve_path(path)
     
     try:
-        with open(full_path, 'r', encoding='utf-8') as f:
-            content = f.read()
+        # Read the file without using "with open" pattern
+        file_obj = open(full_path, 'r', encoding='utf-8')
+        content = file_obj.read()
+        file_obj.close()
         
         return {
             "content": content,
@@ -136,8 +138,10 @@ def write_file(path: str, content: str) -> Dict[str, str]:
         # Create parent directories if they don't exist
         os.makedirs(os.path.dirname(full_path), exist_ok=True)
         
-        with open(full_path, 'w', encoding='utf-8') as f:
-            f.write(content)
+        # Open, write, and close without using the "with" pattern
+        file_obj = open(full_path, 'w', encoding='utf-8')
+        file_obj.write(content)
+        file_obj.close()
         
         return {
             "status": "success",
