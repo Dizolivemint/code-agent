@@ -73,8 +73,13 @@ def generate_test(code_path: str, test_path: Optional[str] = None) -> Dict[str, 
     
     try:
         # Read the code file content
-        with open(code_full_path, 'r', encoding='utf-8') as f:
+        f = None
+        try:
+            f = open(code_full_path, 'r', encoding='utf-8')
             code_content = f.read()
+        finally:
+            if f:
+                f.close()
         
         # Extract module name from file path
         module_name = os.path.splitext(os.path.basename(code_path))[0]
@@ -137,8 +142,13 @@ def test_{func_name}():
             test_full_path = _resolve_path(test_path)
             os.makedirs(os.path.dirname(test_full_path), exist_ok=True)
             
-            with open(test_full_path, 'w', encoding='utf-8') as f:
-                f.write(test_code)
+            f = None
+            try:
+                f = open(code_full_path, 'r', encoding='utf-8')
+                code_content = f.read()
+            finally:
+                if f:
+                    f.close()
         
         return {
             "test_code": test_code,
