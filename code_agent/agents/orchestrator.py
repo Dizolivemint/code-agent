@@ -157,7 +157,10 @@ class AgentOrchestrator:
             if self.tools_status["code"]:
                 developer_tools.extend([
                     code_tools.analyze_code,
-                    code_tools.format_code
+                    code_tools.format_code,
+                    code_tools.fix_code,
+                    code_tools.fix_directory_structure,
+                    code_tools.validate_python_code
                 ])
             
             # Add GitHub tools if available

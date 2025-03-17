@@ -14,7 +14,10 @@ from .filesystem_tools import (
 from .code_tools import (
     set_project_path as set_code_project_path,
     analyze_code,
-    format_code
+    format_code,
+    fix_code,
+    fix_directory_structure,
+    validate_python_code
 )
 
 from .test_tools import (
@@ -48,6 +51,11 @@ __all__ = [
     'write_file',
     'analyze_code',
     'format_code',
+    'fix_code',
+    'set_code_project_path',
+    'set_test_project_path',
+    'fix_directory_structure',
+    'validate_python_code',
     'generate_test',
     'run_tests',
     'run_coverage'
