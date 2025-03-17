@@ -22,20 +22,6 @@ def set_project_path(path: str) -> None:
     global _project_path
     _project_path = path
 
-def _resolve_path(path: str) -> str:
-    """
-    Resolve a path relative to the project path
-    
-    Args:
-        path: Relative or absolute path
-        
-    Returns:
-        Absolute path
-    """
-    if os.path.isabs(path):
-        return path
-    return os.path.join(_project_path or os.getcwd(), path)
-
 @tool
 def analyze_code(code: str) -> Dict[str, Any]:
     """
