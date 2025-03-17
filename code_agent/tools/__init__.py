@@ -8,7 +8,8 @@ from .filesystem_tools import (
     list_directory,
     read_file, 
     create_directory,
-    write_file
+    write_file,
+    init_project
 )
 
 from .code_tools import (
@@ -45,6 +46,7 @@ __all__ = [
     
     # Functions
     'set_base_path',
+    'init_project',
     'list_directory',
     'read_file',
     'create_directory',
