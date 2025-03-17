@@ -28,9 +28,50 @@ def _resolve_path(path: str) -> str:
     Returns:
         Absolute path
     """
+    # Handle empty path
+    if not path:
+        return _base_path or os.getcwd()
+        
+    # Check if it's already absolute
     if os.path.isabs(path):
-        return path
-    return os.path.join(_base_path or os.getcwd(), path)
+        return os.path.normpath(path)
+        
+    # If base path is set, join with it
+    if _base_path:
+        return os.path.normpath(os.path.join(_base_path, path))
+        
+    # Otherwise use current directory
+    return os.path.normpath(os.path.join(os.getcwd(), path))
+
+def normalize_path(path: str) -> str:
+    """
+    Normalize a path to be OS-agnostic
+    
+    Args:
+        path: Path to normalize
+        
+    Returns:
+        Normalized path
+    """
+    # Handle raw string escaping issues by normalizing all paths
+    if path:
+        # Convert to Path object and back to string to normalize separators
+        return str(Path(path))
+    return path
+
+@tool
+def get_absolute_path(relative_path: str = "") -> str:
+    """
+    Convert a relative path to an absolute path based on the base path
+    
+    Args:
+        relative_path: Relative path from the base path
+        
+    Returns:
+        Absolute path
+    """
+    full_path = _resolve_path(relative_path)
+    return str(Path(full_path).resolve())
 
 @tool
 def list_directory(path: str = "") -> List[Dict[str, Any]]:
@@ -73,7 +114,7 @@ def read_file(path: str) -> Dict[str, Any]:
     Returns:
         Dictionary with file content and metadata
     """
-    full_path = _resolve_path(path)
+    full_path = _resolve_path(normalize_path(path))
     
     try:
         # Read the file without using "with open" pattern
@@ -152,3 +193,51 @@ def write_file(path: str, content: str) -> Dict[str, str]:
             "status": "error",
             "message": f"Failed to write file {path}: {str(e)}"
         }
+        
+@tool
+def init_project(project_dir: str, project_name: str) -> Dict[str, Any]:
+    """
+    Initialize a Python project structure with proper directories and files
+    
+    Args:
+        project_dir: Project root directory
+        project_name: Name of the project (should be a valid Python package name)
+        
+    Returns:
+        Dictionary with status information
+    """
+    from ..utils.project_utils import initialize_project_structure
+    return initialize_project_structure(project_dir, project_name)
+  
+@tool
+def init_project(project_dir: str, project_name: str) -> Dict[str, Any]:
+    """
+    Initialize a Python project structure with proper directories and files.
+    Creates a standardized project layout with src, tests, and docs directories,
+    along with proper Python packaging and pytest configuration.
+    
+    Args:
+        project_dir: Project root directory (path where the project will be created)
+        project_name: Name of the project (should be a valid Python package name)
+        
+    Returns:
+        Dictionary with status information and project path
+    """
+    from ..utils.project_utils import initialize_project_structure
+    
+    # Resolve the path relative to the base path
+    full_project_dir = _resolve_path(project_dir)
+    
+    # Initialize the project structure
+    result = initialize_project_structure(full_project_dir, project_name)
+    
+    # If successful, ensure the path in the result is relative to the base path
+    if result["status"] == "success" and _base_path:
+        try:
+            rel_path = os.path.relpath(result["path"], _base_path)
+            result["relative_path"] = rel_path
+        except ValueError:
+            # This can happen if the paths are on different drives
+            result["relative_path"] = result["path"]
+    
+    return result

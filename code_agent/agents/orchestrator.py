@@ -142,6 +142,7 @@ class AgentOrchestrator:
                 filesystem_tools.read_file,
                 filesystem_tools.write_file,
                 filesystem_tools.create_directory,
+                filesystem_tools.absolute_path,
                 code_tools.analyze_code if self.tools_status["code"] else None
             ]
             architect_tools = [tool for tool in architect_tools if tool is not None]
