@@ -74,6 +74,7 @@ def generate_test(code_path: str, test_path: Optional[str] = None) -> Dict[str, 
     try:
         # Read the code file content
         f = None
+        code_content = ""
         try:
             f = open(code_full_path, 'r', encoding='utf-8')
             code_content = f.read()
@@ -97,11 +98,9 @@ def generate_test(code_path: str, test_path: Optional[str] = None) -> Dict[str, 
             elif isinstance(node, ast.FunctionDef) and not node.name.startswith('_'):
                 functions.append(node.name)
         
-        # Generate import path
-        # Convert file path to import path
-        import_path = code_path.replace('/', '.').replace('\\', '.')
-        if import_path.endswith('.py'):
-            import_path = import_path[:-3]  # Remove .py extension
+        # Generate import path more robustly
+        # Use the module name directly instead of complicated path conversion
+        import_path = module_name
         
         # Generate test template
         test_code = f"""
@@ -142,13 +141,13 @@ def test_{func_name}():
             test_full_path = _resolve_path(test_path)
             os.makedirs(os.path.dirname(test_full_path), exist_ok=True)
             
-            f = None
+            f_out = None
             try:
-                f = open(code_full_path, 'r', encoding='utf-8')
-                code_content = f.read()
+                f_out = open(test_full_path, 'w', encoding='utf-8')
+                f_out.write(test_code)
             finally:
-                if f:
-                    f.close()
+                if f_out:
+                    f_out.close()
         
         return {
             "test_code": test_code,
