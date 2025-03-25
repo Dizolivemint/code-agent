@@ -194,6 +194,7 @@ class AgentOrchestrator:
                 filesystem_tools.write_file
             ]
             
+            
             if self.tools_status["code"]:
                 reviewer_tools.append(code_tools.analyze_code)
             
@@ -202,6 +203,14 @@ class AgentOrchestrator:
                 reviewer_tools.extend([
                     github_tools.create_pull_request
                 ])
+                
+            # Environment setup tools
+            environment_tools = [
+                environment_tools.setup_virtual_environment,
+                environment_tools.install_dependencies,
+                environment_tools.extract_dependencies_from_code,
+                environment_tools.create_requirements_file
+            ]
             
             # Create the agents
             self.agents["architect"] = CodeAgent(
@@ -244,6 +253,16 @@ class AgentOrchestrator:
                 verbosity_level=1
             )
             
+            self.agents["environment_setup"] = CodeAgent(
+                model=models.get("architect"),  # Reuse the architect model
+                tools=environment_tools,
+                additional_authorized_imports=["os", "pathlib", "json", "sys", "subprocess", "venv"],
+                name="environment_setup",
+                description="Sets up Python environments and manages dependencies for projects",
+                max_steps=20,
+                verbosity_level=1
+            )
+            
             # Manager agent that can use all other agents
             self.agents["manager"] = CodeAgent(
                 model=models.get("architect"),  # Use architect's model for manager
@@ -257,7 +276,8 @@ class AgentOrchestrator:
                     self.agents["architect"],
                     self.agents["developer"],
                     self.agents["tester"],
-                    self.agents["reviewer"]
+                    self.agents["reviewer"],
+                    self.agents["environment_setup"]
                 ]
             )
             
