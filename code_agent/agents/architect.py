@@ -91,8 +91,11 @@ class ArchitectAgent(BaseSpecializedAgent):
         1. Create a complete directory structure with all necessary files
         2. For each directory, explain its purpose
         3. For key files, explain what they should contain
-        4. Create the base structure using filesystem tools
+        4. Create the base structure using the filesystem tools provided (create_directory, write_file)
         5. Create essential files like README.md, setup.py, etc.
+        
+        IMPORTANT: Use the filesystem tools (create_directory, write_file) provided to you instead of direct os module calls.
+        These tools will automatically handle the correct base path and ensure files are created in the right location.
         
         Make sure to follow Python best practices for project organization.
         The structure should be clean, maintainable, and scalable.

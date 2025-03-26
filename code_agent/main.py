@@ -112,9 +112,10 @@ class CodeAgentApp:
         Returns:
             Build results
         """
-        # Use provided output directory or create one based on project name
+        # Use provided output directory or create one based on project name in the projects directory
         if not output_dir:
-            output_dir = os.path.join(os.getcwd(), project_name)
+            projects_dir = os.path.join(os.getcwd(), "projects")
+            output_dir = os.path.join(projects_dir, project_name)
         
         # Create output directory if it doesn't exist
         os.makedirs(output_dir, exist_ok=True)

@@ -240,6 +240,13 @@ class DevelopmentManager:
               5. Define the data models needed
               6. Outline the API endpoints (if applicable)
               
+              IMPORTANT: Use the filesystem tools provided to you to create directories and files:
+              - Use create_directory to create new directories
+              - Use write_file to create and write content to files
+              - DO NOT use direct os module calls
+              
+              The filesystem tools will automatically handle the correct base path and ensure files are created in the right location.
+              
               Create the directory structure and essential files using the filesystem tools.
               Return a detailed architecture document that explains your design decisions.
               """
