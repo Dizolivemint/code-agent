@@ -70,10 +70,14 @@ class DevelopmentManager:
             username=self.github_username
         )
         
+        # Create projects directory if it doesn't exist
+        projects_dir = os.path.join(os.getcwd(), "projects")
+        os.makedirs(projects_dir, exist_ok=True)
+        
         # Set base paths for all tools
-        set_base_path(self.project_root)
-        set_code_project_path(self.project_root)
-        set_test_project_path(self.project_root)
+        set_base_path(projects_dir)
+        set_code_project_path(projects_dir)
+        set_test_project_path(projects_dir)
         
         # Store tool references for agent initialization
         self.filesystem_tools = {
@@ -186,6 +190,10 @@ class DevelopmentManager:
         # Create project directory within projects directory
         project_dir = os.path.join(projects_dir, name.replace(" ", "_").lower())
         os.makedirs(project_dir, exist_ok=True)
+        
+        # Set the base path for filesystem tools to the project directory
+        from code_agent.tools.filesystem_tools import set_base_path
+        set_base_path(project_dir)
         
         # Create GitHub repository if requested
         repo_info = {}
