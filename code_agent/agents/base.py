@@ -2,6 +2,7 @@
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Optional
 from smolagents import CodeAgent, HfApiModel
+from ..utils.code_utils import check_and_refactor_code
 
 class BaseSpecializedAgent(ABC):
     """Base class for specialized agents"""
@@ -39,6 +40,34 @@ class BaseSpecializedAgent(ABC):
         """Return the agent description"""
         pass
     
+    def _add_file_handling_instructions(self, prompt: str) -> str:
+        """
+        Add file handling instructions to the prompt
+        
+        Args:
+            prompt: Original prompt
+            
+        Returns:
+            Updated prompt with file handling instructions
+        """
+        file_handling_instructions = """
+        
+        IMPORTANT: When working with files, DO NOT use the 'with open' statement.
+        Instead, use direct open/close pattern:
+        
+        # INCORRECT:
+        with open('file.txt', 'r') as f:
+            content = f.read()
+            
+        # CORRECT:
+        file_obj = open('file.txt', 'r')
+        content = file_obj.read()
+        file_obj.close()
+        
+        This is a requirement of the smolagents library.
+        """
+        return prompt + file_handling_instructions
+    
     def run(self, prompt: str) -> Any:
         """
         Run the agent with a prompt
@@ -49,7 +78,20 @@ class BaseSpecializedAgent(ABC):
         Returns:
             Agent response
         """
-        return self.agent.run(prompt)
+        # Add file handling instructions to the prompt
+        prompt = self._add_file_handling_instructions(prompt)
+        
+        # Run the agent
+        response = self.agent.run(prompt)
+        
+        # If the response is a string (code), check and refactor if necessary
+        if isinstance(response, str):
+            needs_refactoring, refactored_code = check_and_refactor_code(response)
+            if needs_refactoring:
+                # If refactoring was needed, run the agent again with the refactored code
+                return self.agent.run(f"Here is the refactored code that follows the correct file handling pattern:\n\n{refactored_code}")
+        
+        return response
 
 # code_agent/agents/architect.py
 from typing import List, Dict, Any, Optional
