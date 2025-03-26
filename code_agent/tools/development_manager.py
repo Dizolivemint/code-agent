@@ -214,49 +214,61 @@ class DevelopmentManager:
                 if clone_result.get("status") == "error":
                     logger.error(f"Failed to clone repository: {clone_result.get('message')}")
         
-        # Save requirements to file
-        requirements_path = os.path.join(project_dir, "requirements.txt")
-        with open(requirements_path, "w") as f:
-            f.write(requirements)
+        # Save project requirements to a separate file
+        project_requirements_path = os.path.join(project_dir, "project_requirements.md")
+        with open(project_requirements_path, "w") as f:
+            f.write(f"""# Project Requirements
+
+## Project Name
+{name}
+
+## Description
+{description}
+
+## Requirements
+{requirements}
+""")
         
         # Generate project architecture using the architect agent
         try:
-          architecture_result = self.architect_agent.run(
-              f"""
-              You are a senior software architect. You need to design a project architecture based on these requirements:
-              
-              PROJECT NAME: {name}
-              DESCRIPTION: {description}
-              
-              REQUIREMENTS:
-              {requirements}
-              
-              Follow these steps:
-              
-              1. Analyze the requirements and break them down into core features
-              2. Define the main components and their responsibilities
-              3. Create a directory structure that follows Python best practices
-              4. Create essential files like README.md, setup.py, etc.
-              5. Define the data models needed
-              6. Outline the API endpoints (if applicable)
-              
-              IMPORTANT: Use the filesystem tools provided to you to create directories and files:
-              - Use create_directory to create new directories
-              - Use write_file to create and write content to files
-              - DO NOT use direct os module calls
-              
-              The filesystem tools will automatically handle the correct base path and ensure files are created in the right location.
-              
-              Create the directory structure and essential files using the filesystem tools.
-              Return a detailed architecture document that explains your design decisions.
-              """
-          )
+            architecture_result = self.architect_agent.run(
+                f"""
+                You are a senior software architect. You need to design a project architecture based on these requirements:
+                
+                PROJECT NAME: {name}
+                DESCRIPTION: {description}
+                
+                REQUIREMENTS:
+                {requirements}
+                
+                Follow these steps:
+                
+                1. Analyze the requirements and break them down into core features
+                2. Define the main components and their responsibilities
+                3. Create a directory structure that follows Python best practices
+                4. Create essential files like README.md, setup.py, requirements.txt, etc.
+                5. Define the data models needed
+                6. Outline the API endpoints (if applicable)
+                7. Determine required Python package dependencies and their versions
+                
+                IMPORTANT: Use the filesystem tools provided to you to create directories and files:
+                - Use create_directory to create new directories
+                - Use write_file to create and write content to files
+                - DO NOT use direct os module calls
+                
+                The filesystem tools will automatically handle the correct base path and ensure files are created in the right location.
+                
+                Create the directory structure and essential files using the filesystem tools.
+                Return a detailed architecture document that explains your design decisions.
+                """
+            )
+            
         except Exception as e:
             logger.error(f"Failed to generate architecture: {str(e)}")
             return {
-              "status": "error",
-              "message": f"Failed to generate project architecture: {str(e)}",
-              "project_dir": project_dir
+                "status": "error",
+                "message": f"Failed to generate project architecture: {str(e)}",
+                "project_dir": project_dir
             }
         
         # Extract features from the architecture result
