@@ -185,6 +185,41 @@ The typical development workflow follows these stages:
    - Create pull request
    - Provide implementation details
 
+# New! Gradio Interface
+### Implementation Details
+
+The UI implementation follows these key principles:
+
+1. **Modular Design**: The UI is implemented as a separate module but leverages the existing CodeAgentApp functionality.
+
+2. **Consistent Interface**: The UI provides the same core functionality as the CLI but in a more user-friendly format.
+
+3. **Tabs for Organization**: Different functionalities are organized into tabs:
+   - Configuration: For setting up GitHub credentials and model settings
+   - Create Project: For building new projects from requirements 
+   - Implement Feature: For adding features to existing projects
+   - File Browser: For viewing generated files
+
+4. **Reuse of Core Code**: The UI doesn't reimplement any of the core functionality but instead calls the existing methods from CodeAgentApp.
+
+5. **Error Handling**: All UI methods include proper exception handling to ensure a smooth user experience.
+
+6. **Interactive Elements**: The UI provides interactive elements like dropdowns for selecting projects and refresh buttons for updating lists.
+
+### Installation and Usage
+
+After implementing these changes, you can use the UI by:
+
+1. Installing the updated package:
+```bash
+pip install -e .
+
+Running the UI:
+
+```bash code-agent-ui```
+or
+```bash python -m code_agent.ui_launcher```
+
 ## License
 
 MIT

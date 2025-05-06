@@ -14,6 +14,7 @@ setup(
         "pytest>=7.0.0",
         "black>=23.0.0",
         "tqdm>=4.65.0",
+        "gradio>=4.0.0",
     ],
     entry_points={
         "console_scripts": [

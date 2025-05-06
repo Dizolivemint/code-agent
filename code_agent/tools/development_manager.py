@@ -319,56 +319,105 @@ class DevelopmentManager:
             if branch_result.get("status") == "error":
                 logger.error(f"Failed to create branch: {branch_result.get('message')}")
         
-        # Implement the feature using the developer agent
-        implementation_result = self.developer_agent.run(
-            f"""
-            You are a senior software developer. You need to implement the following feature:
-            
-            FEATURE NAME: {feature_name}
-            DESCRIPTION: {feature_description}
-            
-            The project directory is: {project_dir}
-            
-            Follow these steps:
-            
-            1. Explore the project structure using list_directory
-            2. Understand the existing code and architecture
-            3. Determine which files need to be created or modified
-            4. Implement the feature with high-quality code
-            5. Ensure proper error handling
-            6. Add comprehensive docstrings and comments
-            
-            For each file you create or modify:
-            1. First check if it exists
-            2. Read it if it exists
-            3. Implement your changes
-            4. Write the updated file
-            
-            Return a detailed description of what you implemented.
-            """
+        # Get implementation from developer agent
+        implementation_result = self.developer_agent.implement_feature(
+            feature=feature,
+            architecture=self.architecture,
+            project_structure=self.project_structure
         )
         
-        # Generate tests for the feature
-        test_result = self.tester_agent.run(
-            f"""
-            You are a senior QA engineer. You need to create tests for the following feature:
-            
-            FEATURE NAME: {feature_name}
-            DESCRIPTION: {feature_description}
-            
-            The project directory is: {project_dir}
-            
-            Follow these steps:
-            
-            1. Explore the project structure using list_directory
-            2. Find the implementation files for the feature
-            3. Create appropriate test files using pytest
-            4. Ensure tests cover both normal and edge cases
-            5. Run the tests to verify they pass
-            
-            Return a detailed description of the tests you created and their results.
-            """
+        # Execute the implementation
+        if "code" in implementation_result:
+            execution_result = execute_code(implementation_result["code"])
+            if execution_result["status"] == "error":
+                # Send the error back to the developer agent
+                error_prompt = f"""
+                The following code generated an error when executed:
+                
+                ```python
+                {execution_result["code"]}
+                ```
+                
+                Error: {execution_result["error"]}
+                
+                Please fix the code and return the corrected version. Make sure to:
+                1. Fix any syntax errors
+                2. Handle all edge cases
+                3. Include all necessary imports
+                4. Fix any runtime errors
+                
+                Return only the corrected code with no additional explanation.
+                """
+                
+                fixed_code = self.developer_agent.run(error_prompt)
+                if "code" in fixed_code:
+                    # Try executing the fixed code
+                    execution_result = execute_code(fixed_code["code"])
+                    if execution_result["status"] == "error":
+                        logger.error(f"Failed to execute implementation after fix attempt: {execution_result['error']}")
+                        return {
+                            "status": "error",
+                            "error": execution_result["error"],
+                            "feature": feature
+                        }
+                    implementation_result["code"] = fixed_code["code"]
+                else:
+                    logger.error("Failed to get fixed code from developer agent")
+                    return {
+                        "status": "error",
+                        "error": "Failed to fix code",
+                        "feature": feature
+                    }
+        
+        # Create tests for the implementation
+        test_result = self.tester_agent.create_tests(
+            feature=feature,
+            implementation=implementation_result
         )
+        
+        # Run the tests
+        if "test_code" in test_result:
+            test_execution = execute_code(test_result["test_code"])
+            if test_execution["status"] == "error":
+                # Send the error back to the tester agent
+                error_prompt = f"""
+                The following test code generated an error when executed:
+                
+                ```python
+                {test_execution["code"]}
+                ```
+                
+                Error: {test_execution["error"]}
+                
+                Please fix the test code and return the corrected version. Make sure to:
+                1. Fix any syntax errors
+                2. Include all necessary imports
+                3. Fix any runtime errors
+                
+                Return only the corrected code with no additional explanation.
+                """
+                
+                fixed_code = self.tester_agent.run(error_prompt)
+                if "code" in fixed_code:
+                    # Try executing the fixed code
+                    test_execution = execute_code(fixed_code["code"])
+                    if test_execution["status"] == "error":
+                        logger.error(f"Failed to execute tests after fix attempt: {test_execution['error']}")
+                        return {
+                            "status": "error",
+                            "error": test_execution["error"],
+                            "feature": feature,
+                            "implementation": implementation_result
+                        }
+                    test_result["test_code"] = fixed_code["code"]
+                else:
+                    logger.error("Failed to get fixed code from tester agent")
+                    return {
+                        "status": "error",
+                        "error": "Failed to fix test code",
+                        "feature": feature,
+                        "implementation": implementation_result
+                    }
         
         # Commit changes if we have GitHub tools set up
         if hasattr(self.github_tools, "repository") and self.github_tools.repository:
@@ -406,6 +455,7 @@ class DevelopmentManager:
                     logger.info(f"Created pull request: {pr_result.get('pr_url')}")
         
         return {
+            "status": "success",
             "feature": feature,
             "implementation": implementation_result,
             "tests": test_result

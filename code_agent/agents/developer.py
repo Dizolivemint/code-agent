@@ -70,7 +70,17 @@ class DeveloperAgent(BaseSpecializedAgent):
         2. If it exists and you need to modify it, read it first
         3. Create/update the file with your implementation
         
-        After implementing the feature, create a branch and commit your changes if GitHub tools are available.
+        IMPORTANT:
+        - All code must be syntactically valid Python
+        - Use proper indentation and formatting
+        - Include all necessary imports
+        - Handle all edge cases and potential errors
+        - Add type hints where appropriate
+        
+        Return a dictionary with:
+        1. "files": List of files created/modified
+        2. "code": The complete implementation code
+        3. "summary": A summary of what was implemented
         """
         
         return self.run(prompt) 

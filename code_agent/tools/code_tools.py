@@ -317,3 +317,32 @@ def validate_python_code(code: str) -> Dict[str, Any]:
             "error_type": "unexpected_error",
             "message": str(e)
         }
+
+@tool
+def execute_code(code: str) -> Dict[str, Any]:
+    """
+    Execute Python code and return any errors that occur
+    
+    Args:
+        code: Python code to execute
+        
+    Returns:
+        Execution results with any errors that occurred
+    """
+    try:
+        # Create a new namespace for execution
+        namespace = {}
+        
+        # Execute the code
+        exec(code, namespace)
+        
+        return {
+            "status": "success",
+            "namespace": namespace
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": str(e),
+            "code": code  # Include the code that caused the error
+        }
