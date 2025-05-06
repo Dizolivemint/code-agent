@@ -1,0 +1,41 @@
+Build a procedurally generated website application with the following features:
+
+1. Dynamic Page Generation
+   The application should generate unique web pages for any URL path requested.
+   Each page should be generated based on the pathname in the URL.
+
+2. Theme Generation
+   The system should analyze the pathname and generate a small list of relevant themes.
+   One theme should be randomly selected from this list for each page generation.
+   Themes should influence the visual style, content, and overall feel of the page.
+
+3. Design System
+   Use symbolically similar colors, patterns, and elements that match the selected theme.
+   Designs should incorporate age-appropriate elements for the theme.
+   Follow established website design patterns with proper navigation at top and bottom.
+   Implement a mobile-first responsive design approach.
+
+4. SVG Graphics
+   All visual elements and graphics should be created using SVG.
+   Leverage techniques similar to SVGDreamer for text-guided SVG generation.
+   SVGs should complement the theme and enhance the visual storytelling.
+
+5. Technical Implementation
+   Use FastAPI to handle GET requests and serve the dynamically generated pages.
+   Implement proper routing to capture and process any pathname.
+   Ensure fast page generation to minimize load times.
+   Cache previously generated pages when appropriate.
+
+6. User Experience
+   Every link on generated pages should lead to another procedurally generated page.
+   Navigation should be intuitive despite the random nature of the content.
+   Pages should load quickly and be visually appealing.
+
+Technical requirements:
+- Use Python 3.9 or higher with FastAPI
+- Implement responsive design principles
+- Generate all graphics as SVGs
+- Follow web accessibility guidelines
+- Include proper error handling
+- Add comprehensive logging for generation process
+- Implement testing for the page generation engine
